@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>問い — かなめ結び</title>
+<style>
+  :root{
+    --ink:#1c1a17;--ink-soft:#6b655c;--ink-faint:#a8a196;
+    --paper:#f6f3ec;--card:#fffdf8;--line:#e4ded2;--line-soft:#efeadf;
+    --accent:#3a6b5f;--accent-soft:#e8f0ec;--star:#c8912e;
+    --quote:#8a5a3c;--quote-soft:#f2e9df;--radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",system-ui,sans-serif;
+    background:var(--paper);color:var(--ink);line-height:1.8;
+    padding:28px 18px 120px;max-width:720px;margin:0 auto}
+
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;
+    padding-bottom:14px;border-bottom:1.5px solid var(--ink);margin-bottom:8px}
+  .masthead h1{font-size:20px;font-weight:600;letter-spacing:.08em}
+  .masthead .sub{font-size:12px;color:var(--ink-soft);font-weight:400;letter-spacing:.04em}
+  .masthead a{font-size:13px;color:var(--accent);text-decoration:none}
+  .lead{font-size:13px;color:var(--ink-soft);margin:14px 2px 24px;line-height:1.9}
+
+  /* --- 読み込み --- */
+  .intake{background:var(--card);border:0.5px solid var(--line);border-radius:12px;
+    padding:22px 20px;margin-bottom:20px}
+  .intake h2{font-size:15px;font-weight:600;margin-bottom:6px}
+  .intake p{font-size:13px;color:var(--ink-soft);margin-bottom:16px}
+  .drop{border:1.5px dashed var(--line);border-radius:var(--radius);
+    padding:26px 18px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .drop .big{font-size:14px;color:var(--ink);font-weight:600}
+  .drop .small{font-size:12px;color:var(--ink-faint);margin-top:5px}
+  .drop input{display:none}
+  .loaded{font-size:13px;color:var(--accent);margin-top:14px;display:none}
+  .loaded.show{display:block}
+
+  /* --- 素材の要約（読み込み後） --- */
+  .corpus{display:none;background:var(--card);border:0.5px solid var(--line);
+    border-radius:12px;padding:16px 18px;margin-bottom:20px}
+  .corpus.show{display:block}
+  .corpus .stat{font-size:13px;color:var(--ink-soft);margin:3px 0}
+  .corpus .stat b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* 選択パネル */
+  .select-panel{display:none;background:var(--card);border:0.5px solid var(--line);border-radius:12px;padding:18px 18px 20px;margin-bottom:20px}
+  .select-panel.show{display:block}
+  .select-panel h2{font-size:15px;font-weight:600;margin-bottom:6px}
+  .select-hint{font-size:12px;color:var(--ink-soft);margin-bottom:12px;line-height:1.8}
+  .select-tools{display:flex;gap:14px;margin-bottom:10px}
+  .mini{font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none}
+  .mini:hover{text-decoration:underline}
+  .srow{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:0.5px solid var(--line-soft);flex-wrap:wrap}
+  .srow:last-of-type{border-bottom:none}
+  .srow label.pick{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0}
+  .srow input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0}
+  .sname{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .smeta{font-size:11px;color:var(--ink-faint);white-space:nowrap}
+  .srange{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ink-soft)}
+  .srange input{width:52px;font-family:inherit;font-size:13px;padding:5px 6px;border:0.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);text-align:center}
+  .srange input:focus{outline:none;border-color:var(--accent)}
+  .srange input:disabled{opacity:.4}
+  .select-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:0.5px solid var(--line)}
+  .select-count{font-size:12px;color:var(--ink-soft)}
+  .act{font-family:inherit;font-size:14px;font-weight:600;padding:11px 22px;border:none;border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer}
+  .act:disabled{opacity:.4;cursor:default}
+  .act:not(:disabled):hover{background:#2f574d}
+
+  /* --- 対話 --- */
+  .thread{display:flex;flex-direction:column;gap:0}
+  .exchange{border-bottom:0.5px solid var(--line-soft);padding:20px 0}
+  .exchange:first-child{padding-top:6px}
+
+  .anchor{font-size:12px;color:var(--ink-faint);letter-spacing:.03em;margin-bottom:10px;
+    display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .anchor .tag{background:var(--accent-soft);color:var(--accent);font-weight:600;
+    padding:2px 8px;border-radius:5px;font-size:11px}
+  .anchor .cite{color:var(--ink-soft)}
+
+  blockquote{border-left:2.5px solid var(--quote);background:var(--quote-soft);
+    padding:9px 14px;margin:0 0 14px;border-radius:0 8px 8px 0;
+    font-size:14px;color:var(--ink);line-height:1.7}
+  blockquote .from{display:block;font-size:11px;color:var(--quote);margin-top:5px;letter-spacing:.03em}
+
+  .reckon{border:1px dashed var(--accent);background:var(--accent-soft);border-radius:8px;
+    padding:9px 13px;margin:0 0 14px;font-size:14px;color:var(--ink);line-height:1.75}
+  .reckon-label{display:inline-block;font-size:11px;font-weight:600;color:var(--accent);
+    letter-spacing:.04em;margin-right:8px;padding:1px 7px;border:0.5px solid var(--accent);border-radius:5px;vertical-align:2%}
+
+  .stage{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;
+    color:var(--accent);letter-spacing:.06em;margin-bottom:10px}
+  .stage-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+  .question{font-size:16px;color:var(--ink);line-height:1.85;font-weight:500;
+    padding-left:2px}
+  .question::before{content:"問  ";color:var(--accent);font-weight:600;font-size:13px}
+
+  .answer{font-size:15px;color:var(--ink);line-height:1.8;margin-top:14px;
+    padding:12px 14px;background:var(--paper);border-radius:8px;white-space:pre-wrap}
+  .answer .label{display:block;font-size:11px;color:var(--ink-faint);margin-bottom:5px;letter-spacing:.06em}
+  .exchange-answer{padding:4px 0 16px}
+  .answer.standalone{margin-top:0}
+  .correction{border-left:2.5px solid var(--quote);background:var(--quote-soft);border-radius:0 8px 8px 0;padding:9px 14px;font-size:14px;color:var(--ink);line-height:1.7}
+  .corr-label{display:inline-block;font-size:11px;font-weight:600;color:var(--quote);letter-spacing:.04em;margin-right:8px;padding:1px 7px;border:0.5px solid var(--quote);border-radius:5px;vertical-align:2%}
+
+  /* --- 入力 --- */
+  .composer{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--paper) 72%,transparent);
+    padding:16px 18px 20px}
+  .composer-inner{max-width:720px;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+  .composer textarea{flex:1;font-family:inherit;font-size:15px;line-height:1.7;
+    color:var(--ink);background:var(--card);border:0.5px solid var(--line);
+    border-radius:var(--radius);padding:12px 14px;resize:none;min-height:50px;max-height:180px}
+  .composer textarea:focus{outline:none;border-color:var(--accent)}
+  .composer textarea:disabled{opacity:.5}
+  .send{font-family:inherit;font-size:14px;font-weight:600;padding:12px 22px;border:none;
+    border-radius:var(--radius);background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap}
+  .send:disabled{opacity:.4;cursor:default}
+  .send:not(:disabled):hover{background:#2f574d}
+
+  .thinking{font-size:13px;color:var(--ink-faint);padding:16px 2px;display:none;align-items:center;gap:8px}
+  .thinking.show{display:flex}
+  .thinking .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);
+    animation:pulse 1.2s ease-in-out infinite}
+  .thinking .dot:nth-child(2){animation-delay:.2s}
+  .thinking .dot:nth-child(3){animation-delay:.4s}
+  @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+  .err{font-size:13px;color:#a04a3a;background:#f3e3df;border-radius:8px;padding:10px 13px;margin:12px 0;display:none}
+  .err.show{display:block}
+
+  .summarize-bar{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 4px;padding:14px 0 0;border-top:0.5px solid var(--line)}
+  .summarize-bar.show{display:flex}
+  .summarize-btn{font-family:inherit;font-size:13px;font-weight:600;padding:9px 18px;border-radius:20px;background:var(--card);color:var(--accent);border:0.5px solid var(--accent);cursor:pointer}
+  .summarize-btn:hover{background:var(--accent-soft)}
+  .summarize-btn:disabled{opacity:.4;cursor:default}
+  .summarize-note{font-size:12px;color:var(--ink-faint)}
+  .tool-btn{font-family:inherit;font-size:13px;font-weight:600;padding:9px 16px;border-radius:20px;background:var(--card);color:var(--ink-soft);border:0.5px solid var(--line);cursor:pointer}
+  .tool-btn:hover{background:var(--paper);color:var(--ink)}
+  .reask-bar{display:none;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 2px}
+  .reask-bar.show{display:flex}
+  .reask-btn{font-family:inherit;font-size:12px;font-weight:600;padding:7px 14px;border-radius:16px;background:transparent;color:var(--ink-soft);border:0.5px solid var(--line);cursor:pointer}
+  .reask-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .reask-btn.correct{border-color:var(--quote);color:var(--quote)}
+  .reask-btn.correct:hover{background:var(--quote-soft);border-color:var(--quote);color:var(--quote)}
+  .reask-order{display:none;flex-wrap:wrap;gap:8px;align-items:center;width:100%;margin-top:4px}
+  .reask-order.show{display:flex}
+  .reask-order input{flex:1;min-width:200px;font-family:inherit;font-size:13px;padding:8px 12px;border:0.5px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .reask-order input:focus{outline:none;border-color:var(--accent)}
+  .reask-go{font-family:inherit;font-size:12px;font-weight:600;padding:8px 15px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer}
+  .resume-link{display:inline-block;margin-top:14px;font-size:13px;color:var(--accent);text-decoration:none;cursor:pointer;border-top:0.5px solid var(--line-soft);padding-top:14px;width:100%}
+  .resume-link:hover{text-decoration:underline}
+  .oneline{margin-top:16px;padding-top:16px;border-top:0.5px solid var(--line-soft)}
+  .oneline-head{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px}
+  .oneline-hint{font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.8}
+  .oneline textarea{width:100%;font-family:inherit;font-size:15px;line-height:1.7;color:var(--ink);background:var(--card);border:0.5px solid var(--line);border-radius:8px;padding:11px 13px;resize:vertical;min-height:56px}
+  .oneline textarea:focus{outline:none;border-color:var(--accent)}
+  .oneline-go{margin-top:10px;font-family:inherit;font-size:14px;font-weight:600;padding:10px 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
+  .oneline-go:hover{background:#2f574d}
+  .summary-final{background:var(--accent-soft);border:0.5px solid var(--accent);border-radius:10px;padding:16px 18px;margin:18px 0;white-space:pre-wrap;font-size:15px;line-height:1.85;color:var(--ink)}
+  .summary-final .sf-label{display:block;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.06em;margin-bottom:8px}
+  .summary-copy{margin-top:12px;font-family:inherit;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;background:var(--accent);color:#fff;border:none;cursor:pointer}
+  .story-box{background:var(--card);border:0.5px solid var(--quote);border-radius:10px;padding:18px 20px;margin:16px 0;font-size:15px;line-height:1.9;color:var(--ink)}
+  .story-label{display:block;font-size:11px;font-weight:600;color:var(--quote);letter-spacing:.06em;margin-bottom:12px}
+
+  .newfile{font-size:12px;color:var(--accent);text-decoration:none;cursor:pointer;display:none;margin-top:8px}
+  .newfile.show{display:inline-block}
+
+  @media (max-width:520px){
+    body{padding:20px 14px 110px}
+    .question{font-size:15px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .thinking .dot{animation:none}
+  }
+</style>
+</head>
+<body>
+  <div class="masthead">
+    <h1>問い <span class="sub">かなめ結び</span></h1>
+    <a href="list.php">← 一覧へ</a>
+  </div>
+  <p class="lead">記録に残したあなたの引っかかりを素材に、問いを一つずつ返します。答えは出しません。あなたが答えると、その答えの中の引っかかりをまた問います。主体はあなたです。</p>
+
+  <!-- 読み込み -->
+  <div class="intake" id="intake">
+    <h2>記録を読み込む</h2>
+    <p>「全件バックアップ」で落とした zip か tar.gz を、そのまま。ファイルはこのブラウザの中だけで読まれ、サーバーには送られません。</p>
+    <label class="drop" id="drop">
+      <div class="big">ファイルを選ぶ / ここに置く</div>
+      <div class="small">kaname_backup_….zip または .tar.gz</div>
+      <input type="file" id="file" accept=".zip,.gz,.tgz,application/zip,application/gzip">
+    </label>
+    <div class="loaded" id="loaded"></div>
+    <div class="err" id="intakeErr"></div>
+    <div class="oneline">
+      <div class="oneline-head">記録を使わず、ひと言から始める</div>
+      <p class="oneline-hint">今、頭にある引っかかりを一つ書いてください。ここを起点に、同じ五段の階段を登ります。記録の読み込みはいりません。</p>
+      <textarea id="onelineInput" rows="2" placeholder="例：偽物が本物になる瞬間が、ずっと気になっている"></textarea>
+      <button class="oneline-go" id="onelineGo">このひと言から始める</button>
+    </div>
+    <a class="resume-link" id="resumeLink">保存した対話を開く（続きから）</a>
+  </div>
+
+  <!-- 素材の要約 -->
+  <div class="corpus" id="corpus">
+    <div class="stat"><b id="cRecords">0</b> 件の記録　／　時刻メモのある記録 <b id="cTimeline">0</b> 件</div>
+    <div class="stat">刻まれた反応 <b id="cEntries">0</b>　／　シリーズ <b id="cSeries">0</b></div>
+    <a class="newfile show" id="newfile">別のファイルを読み込む</a>
+  </div>
+
+  <!-- 考察対象の選択 -->
+  <div class="select-panel" id="selectPanel">
+    <h2>考察するシリーズを選ぶ</h2>
+    <p class="select-hint">チェックしたシリーズが対象です。話数を入れれば「何話から何話」だけに絞れます（空なら全話）。違うシリーズを横断して選べます。</p>
+    <div class="select-tools">
+      <a class="mini" id="selAll">すべて選択</a>
+      <a class="mini" id="selNone">すべて解除</a>
+    </div>
+    <div id="seriesList"></div>
+    <div class="select-bar">
+      <span class="select-count" id="selCount">0 シリーズ ／ 0 件を対象</span>
+      <button class="act" id="startBtn" disabled>この対象で始める</button>
+    </div>
+    <div class="err" id="selectErr"></div>
+  </div>
+
+  <div class="thread" id="thread"></div>
+
+  <div class="thinking" id="thinking">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <span>記録を読み、引っかかりを探しています…</span>
+  </div>
+  <div class="err" id="talkErr"></div>
+
+  <!-- 対話の操作（保存・再開・まとめ）— 対話が始まったら出る -->
+  <div class="summarize-bar" id="summarizeBar">
+    <button class="summarize-btn" id="summarizeBtn">まとめを始める</button>
+    <button class="tool-btn" id="saveBtn">対話を保存</button>
+    <span class="summarize-note">到達点から、外に出す一点に絞ります。保存すれば途中でも終わってからでも、続きから再開できます。</span>
+  </div>
+
+  <!-- 問いの差し替え・認識の訂正（問いが返ったら出る） -->
+  <div class="reask-bar" id="reaskBar">
+    <button class="reask-btn" id="reaskBtn">別の問いを</button>
+    <button class="reask-btn" id="reaskOrderBtn">注文して引き直す</button>
+    <button class="reask-btn correct" id="correctBtn">認識を直す</button>
+    <div class="reask-order" id="reaskOrder">
+      <input type="text" id="reaskInput" placeholder="どんな問いがいいか（例：もっと具体的に／別のシリーズから／浅い、深く）">
+      <button class="reask-go" id="reaskGo">引き直す</button>
+    </div>
+    <div class="reask-order" id="correctOrder">
+      <input type="text" id="correctInput" placeholder="どこの捉え方が違うか（例：引っかかったのは食べ物ではなく直前の間だ）">
+      <button class="reask-go" id="correctGo">直して問い直す</button>
+    </div>
+  </div>
+
+  <!-- 入力 -->
+  <div class="composer">
+    <div class="composer-inner">
+      <textarea id="input" placeholder="まず記録を読み込んでください" disabled rows="1"></textarea>
+      <button class="send" id="send" disabled>返す</button>
+    </div>
+  </div>
+
+  <!-- 対話ファイルの読み込み（隠し） -->
+  <input type="file" id="loadFile" accept=".json,application/json" style="display:none">
+
+<script>
+(function(){
+  let CORPUS = null;      // 読み込んだ記録の配列（全件）
+  let SELECTED = null;    // 考察対象に絞った配列
+  let HISTORY = [];       // API に渡す会話履歴（user/assistant）
+  let MODE = 'inquiry';   // 'inquiry'（問いを深める）→ 'summarize'（まとめを一緒に作る）
+  let SOURCELESS = false; // 記録を使わない「ひと言から」モードか
+  let ONELINE_SEED = '';  // ひと言スタートの起点テキスト
+  let lastEx = null;      // 直近の問いのDOM（差し替え・答え追加の対象）
+  let busy = false;
+
+  // ---------- MD parse（md.php と同じ分解）----------
+  function parseMD(text){
+    const lines = text.split(/\r\n|\r|\n/);
+    const fields = {}; let mode='front', tl=[], rv=[], score='';
+    for(const line of lines){
+      if(mode==='front'){
+        if(line.trim()==='## 時刻メモ'){ mode='timeline'; continue; }
+        if(line.trim()==='## 総評'){ mode='review'; continue; }
+        const m=line.match(/^([a-zA-Z_]+):\s?(.*)$/);
+        if(m){ if(m[1]==='score') score=m[2]; else fields[m[1]]=m[2]; }
+      } else if(mode==='timeline'){
+        if(line.trim()==='## 総評'){ mode='review'; continue; }
+        tl.push(line);
+      } else {
+        const m=line.match(/^score:\s?(.*)$/);
+        if(m){ score=m[1]; continue; }
+        rv.push(line);
+      }
+    }
+    const notes = tl.join('\n').trim();
+    const entries=[];
+    if(notes){
+      for(const l of notes.split('\n')){
+        const m=l.match(/^-\s*\[(\d+):(\d{2})(?::(\d{2}))?\]\s?(.*)$/);
+        if(m){ const t=m[3]!==undefined?(+m[1])*3600+(+m[2])*60+(+m[3]):(+m[1])*60+(+m[2]);
+               entries.push({t,text:m[4]}); }
+      }
+    }
+    return { fields, timeline_notes:notes, entries, review:rv.join('\n').trim(), score };
+  }
+
+  // ---------- 解凍（ブラウザ標準 DecompressionStream・CDN不要）----------
+  async function inflateRaw(u8){
+    const ds=new DecompressionStream('deflate-raw');
+    const stream=new Response(new Blob([u8]).stream().pipeThrough(ds));
+    return new Uint8Array(await stream.arrayBuffer());
+  }
+  async function gunzip(u8){
+    const ds=new DecompressionStream('gzip');
+    const stream=new Response(new Blob([u8]).stream().pipeThrough(ds));
+    return new Uint8Array(await stream.arrayBuffer());
+  }
+
+  // ---------- ZIP を自前で歩いて各エントリを解凍 ----------
+  async function readZip(u8){
+    const dv=new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    const files={}; let i=0;
+    while(i+4<=u8.length){
+      const sig=dv.getUint32(i,true);
+      if(sig!==0x04034b50) break;                  // ローカルヘッダの連続が終わったら停止
+      const method=dv.getUint16(i+8,true);
+      let compSize=dv.getUint32(i+18,true);
+      const nameLen=dv.getUint16(i+26,true);
+      const extraLen=dv.getUint16(i+28,true);
+      const name=new TextDecoder().decode(u8.slice(i+30, i+30+nameLen));
+      const dataStart=i+30+nameLen+extraLen;
+      const comp=u8.slice(dataStart, dataStart+compSize);
+      let content;
+      if(method===0){ content=comp; }               // 無圧縮
+      else if(method===8){ content=await inflateRaw(comp); } // deflate
+      else throw new Error('未対応のZIP圧縮方式('+method+')');
+      files[name]=content;
+      i=dataStart+compSize;
+    }
+    return files;
+  }
+
+  // ---------- tar 展開（ustar・512バイトブロック）----------
+  function untar(u8){
+    const files={}; let off=0;
+    const str=(s,l)=>{let e='';for(let i=0;i<l;i++){const c=u8[s+i];if(c===0)break;e+=String.fromCharCode(c);}return e;};
+    while(off+512<=u8.length){
+      const name=str(off,100);
+      if(name===''){ break; }
+      const size=parseInt(str(off+124,12).trim(),8)||0;
+      const start=off+512;
+      files[name]=u8.slice(start,start+size);
+      off=start+Math.ceil(size/512)*512;
+    }
+    return files;
+  }
+
+  // ---------- ファイル読み込み ----------
+  const drop=document.getElementById('drop');
+  const fileInput=document.getElementById('file');
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+  drop.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change',e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+  document.getElementById('newfile').addEventListener('click',()=>{
+    document.getElementById('intake').style.display='block';
+    document.getElementById('selectPanel').classList.remove('show');
+    document.getElementById('thread').innerHTML='';
+    document.getElementById('summarizeBar').classList.remove('show');
+    document.getElementById('summarizeBtn').disabled=false;
+    document.getElementById('summarizeBtn').textContent='まとめを始める';
+    document.getElementById('reaskBar').classList.remove('show');
+    MODE='inquiry'; SOURCELESS=false; ONELINE_SEED='';
+    SELECTED=null; HISTORY=[]; lastEx=null;
+    fileInput.value='';
+  });
+
+  function showIntakeErr(msg){ const e=document.getElementById('intakeErr'); e.textContent=msg; e.classList.add('show'); }
+
+  async function handleFile(file){
+    document.getElementById('intakeErr').classList.remove('show');
+    let stage='読み込み';
+    try{
+      if(typeof DecompressionStream==='undefined'){
+        showIntakeErr('このブラウザは標準の解凍機能に対応していないようです。Chrome や Safari の新しめの版でお試しください。');
+        return;
+      }
+      stage='ファイルの受け取り';
+      const buf=new Uint8Array(await file.arrayBuffer());
+      let mdFiles={};
+
+      // 拡張子より中身のシグネチャを優先（gzip=1f8b / zip=PK）
+      const isGz  = (buf[0]===0x1f && buf[1]===0x8b);
+      const isZip = (buf[0]===0x50 && buf[1]===0x4b);
+
+      if(isZip){
+        stage='ZIPの解凍';
+        const un=await readZip(buf);
+        for(const k in un){ if(/(^|\/)\d{6}\.md$/.test(k)) mdFiles[k.split('/').pop()]=un[k]; }
+      } else if(isGz){
+        stage='tar.gzの解凍';
+        const tar=await gunzip(buf);
+        const all=untar(tar);
+        for(const k in all){ if(/(^|\/)\d{6}\.md$/.test(k)) mdFiles[k.split('/').pop()]=all[k]; }
+      } else {
+        showIntakeErr('zip でも tar.gz でもないようです。「全件バックアップ」で落としたファイルをそのまま入れてください。');
+        return;
+      }
+
+      stage='記録の解析';
+      const dec=new TextDecoder('utf-8');
+      const records=[];
+      for(const fn in mdFiles){
+        const id=fn.replace('.md','');
+        const p=parseMD(dec.decode(mdFiles[fn]));
+        records.push({id, ...p});
+      }
+      if(records.length===0){ showIntakeErr('記録（6桁MD）が見つかりませんでした。バックアップの中身を確認してください。'); return; }
+      records.sort((a,b)=>a.id.localeCompare(b.id));
+      CORPUS=records;
+      onCorpusReady();
+    }catch(err){
+      showIntakeErr('読み込めませんでした（'+stage+'の段階）：'+err.message);
+    }
+  }
+
+  function onCorpusReady(){
+    const withTL=CORPUS.filter(r=>r.entries.length>0);
+    const entries=CORPUS.reduce((s,r)=>s+r.entries.length,0);
+    const series=new Set(CORPUS.map(r=>r.fields.series||'（無題）'));
+    document.getElementById('cRecords').textContent=CORPUS.length;
+    document.getElementById('cTimeline').textContent=withTL.length;
+    document.getElementById('cEntries').textContent=entries;
+    document.getElementById('cSeries').textContent=series.size;
+    document.getElementById('loaded').textContent='読み込みました：'+CORPUS.length+'件';
+    document.getElementById('loaded').classList.add('show');
+    document.getElementById('intake').style.display='none';
+    document.getElementById('corpus').classList.add('show');
+    // 全件から対話に入るのではなく、まず対象を選ぶ
+    buildSelectPanel();
+  }
+
+  // ---------- 考察対象の選択 ----------
+  let SERIES_GROUPS = [];   // [{name, records:[...], minEp, maxEp}]
+  function buildSelectPanel(){
+    // シリーズごとにまとめ、話数レンジを出す
+    const map=new Map();
+    for(const r of CORPUS){
+      const name=r.fields.series||'（無題）';
+      if(!map.has(name)) map.set(name, []);
+      map.get(name).push(r);
+    }
+    SERIES_GROUPS=[];
+    for(const [name, recs] of map){
+      const eps=recs.map(r=>parseInt(r.fields.episode,10)||0);
+      SERIES_GROUPS.push({ name, records:recs, minEp:Math.min(...eps), maxEp:Math.max(...eps) });
+    }
+    SERIES_GROUPS.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+
+    const list=document.getElementById('seriesList');
+    list.innerHTML='';
+    SERIES_GROUPS.forEach((g,i)=>{
+      const row=document.createElement('div'); row.className='srow';
+      const multi = g.maxEp>g.minEp;
+      row.innerHTML=
+        '<label class="pick">'
+        + '<input type="checkbox" class="s-check" data-i="'+i+'" checked>'
+        + '<span class="sname">'+esc(g.name)+'</span>'
+        + '<span class="smeta">'+g.records.length+'話'+(multi?('（'+g.minEp+'〜'+g.maxEp+'）'):'')+'</span>'
+        + '</label>'
+        + (multi
+            ? '<span class="srange">'
+              + '<input type="number" class="s-from" data-i="'+i+'" placeholder="'+g.minEp+'" min="'+g.minEp+'" max="'+g.maxEp+'">'
+              + '〜'
+              + '<input type="number" class="s-to" data-i="'+i+'" placeholder="'+g.maxEp+'" min="'+g.minEp+'" max="'+g.maxEp+'">'
+              + '話</span>'
+            : '');
+      list.appendChild(row);
+    });
+
+    // イベント：チェック変更・範囲入力で件数を更新
+    list.querySelectorAll('.s-check').forEach(c=>c.addEventListener('change',updateSelCount));
+    list.querySelectorAll('.s-from,.s-to').forEach(inp=>inp.addEventListener('input',updateSelCount));
+    document.getElementById('selAll').onclick=()=>{ list.querySelectorAll('.s-check').forEach(c=>c.checked=true); updateSelCount(); };
+    document.getElementById('selNone').onclick=()=>{ list.querySelectorAll('.s-check').forEach(c=>c.checked=false); updateSelCount(); };
+    document.getElementById('startBtn').onclick=confirmSelection;
+
+    document.getElementById('selectPanel').classList.add('show');
+    updateSelCount();
+  }
+
+  // 現在の選択から対象レコードを集める
+  function collectSelected(){
+    const list=document.getElementById('seriesList');
+    const out=[];
+    SERIES_GROUPS.forEach((g,i)=>{
+      const chk=list.querySelector('.s-check[data-i="'+i+'"]');
+      if(!chk || !chk.checked) return;
+      const fromEl=list.querySelector('.s-from[data-i="'+i+'"]');
+      const toEl=list.querySelector('.s-to[data-i="'+i+'"]');
+      const from=fromEl && fromEl.value!=='' ? parseInt(fromEl.value,10) : null;
+      const to  =toEl   && toEl.value!==''   ? parseInt(toEl.value,10)   : null;
+      for(const r of g.records){
+        const ep=parseInt(r.fields.episode,10)||0;
+        if(from!==null && ep<from) continue;
+        if(to!==null   && ep>to)   continue;
+        out.push(r);
+      }
+    });
+    return out;
+  }
+
+  function updateSelCount(){
+    // 範囲入力の有効/無効：チェックが外れたシリーズの範囲欄は無効化
+    const list=document.getElementById('seriesList');
+    SERIES_GROUPS.forEach((g,i)=>{
+      const chk=list.querySelector('.s-check[data-i="'+i+'"]');
+      const on=chk && chk.checked;
+      list.querySelectorAll('.s-from[data-i="'+i+'"],.s-to[data-i="'+i+'"]').forEach(inp=>inp.disabled=!on);
+    });
+    const sel=collectSelected();
+    const seriesN=new Set(sel.map(r=>r.fields.series||'（無題）')).size;
+    document.getElementById('selCount').textContent=seriesN+' シリーズ ／ '+sel.length+' 件を対象';
+    document.getElementById('startBtn').disabled = sel.length===0;
+  }
+
+  function confirmSelection(){
+    document.getElementById('selectErr').classList.remove('show');
+    const sel=collectSelected();
+    if(sel.length===0){
+      const e=document.getElementById('selectErr'); e.textContent='少なくとも1件は選んでください。'; e.classList.add('show'); return;
+    }
+    // 範囲の逆転チェック（from>to）
+    const list=document.getElementById('seriesList');
+    for(let i=0;i<SERIES_GROUPS.length;i++){
+      const chk=list.querySelector('.s-check[data-i="'+i+'"]');
+      if(!chk||!chk.checked) continue;
+      const f=list.querySelector('.s-from[data-i="'+i+'"]');
+      const t=list.querySelector('.s-to[data-i="'+i+'"]');
+      if(f&&t&&f.value!==''&&t.value!==''&&parseInt(f.value,10)>parseInt(t.value,10)){
+        const e=document.getElementById('selectErr');
+        e.textContent='「'+SERIES_GROUPS[i].name+'」の話数範囲が逆転しています（開始＞終了）。';
+        e.classList.add('show'); return;
+      }
+    }
+    SELECTED=sel;
+    document.getElementById('selectPanel').classList.remove('show');
+    openingQuestion();
+  }
+
+  // ---------- 素材を API 用テキストに ----------
+  // 選んだ対象だけを要約テキスト化する
+  function corpusDigest(){
+    const src = SELECTED || CORPUS;
+    const parts=[];
+    for(const r of src){
+      const head=`【${r.id}】${r.fields.series||'（無題）'} 第${r.fields.episode||'?'}話`
+        + (r.fields.subtitle?(' 「'+r.fields.subtitle+'」'):'')
+        + (r.fields.tags?(' ｜タグ:'+r.fields.tags):'')
+        + (r.score!==''?(' ｜星:'+r.score):'');
+      const lines=[head];
+      if(r.entries.length){
+        lines.push('  時刻メモ:');
+        for(const e of r.entries){
+          const mm=Math.floor(e.t/60), ss=e.t%60;
+          lines.push(`    [${mm}:${String(ss).padStart(2,'0')}] ${e.text}`);
+        }
+      }
+      if(r.review) lines.push('  総評: '+r.review.replace(/\n/g,' / '));
+      parts.push(lines.join('\n'));
+    }
+    return parts.join('\n\n');
+  }
+
+  const SYSTEM = [
+    'あなたは、ユーザー自身の思考を分析するための「問いを返す装置」です。分析対象は作品ではなく、ユーザーの思考そのものです。思考する主体は常にユーザーであり、あなたは決して答えを出しません。',
+    'ユーザーは映像・書籍を観ながら、引っかかった瞬間を時刻メモ（一段目の生の反応）に、観終わった後の考えを総評（二段目）に残しています。',
+    '記録を使わない場合もある。そのときユーザーは、今引っかかっていることを最初にひと言で差し出す。その一言を第一段階《引っかかりを見つける》の起点＝指さし済みの引っかかりとして扱い、なぜそこに引っかかるのかを問うところから、同じ五段の階段を始める。素材は記録の代わりに、ユーザーのその発言と、そこから育つ言葉になる（火口がひと言に変わるだけで、進み方は同じ）。',
+    '',
+    '━━ 対話の背骨（四つの段階を、この順で深める）━━',
+    'この対話には進む順序がある。段階を飛ばさず、一段ずつ深める。今どの段階にいるかを常に意識し、ユーザーの答えがその段階をクリアしたと見たら次へ、まだなら同じ段階で角度を変えてもう一度問う。',
+    '第一段階《引っかかりを見つける》：まずユーザーの断片の群れを横断し、繰り返し現れる引っかかりを一つ探して、指さす。「食べ物の実写に3回反応していますね」「偽物に意思が宿ることに、何話も引っかかっていますね」。これは問いというより指さし＝ユーザーが無意識に反復していたものを目の前に差し出す行為。単発の反応でなく、反復する引っかかりを選ぶ。ここで深掘りの起点が決まる。（下の【無自覚な着目】と推論イ＝パターンの統合が、ここの道具）',
+    '第二段階《転写を促す》：見つけた引っかかりを、作品の外へ広げさせる。「この演出は、観る人に何をさせようとしているのか」「この構造は、現実の何と重なるか」。作品の中の出来事を、その奥の一般的な仕組みへ翻訳させる。ユーザーの答え（例「増幅とは、一人の声が世界に届くネット社会のことだ」）が、この段階の到達点。（推論ア＝一般則の抽出が主な道具）',
+    '第三段階《転写の先へ押す》：ここが最も重要。転写できたら止めず、写した抽象を作品にもう一度戻して、さらに深い層を引き出す。「その増幅は本当に対等をもたらすのか、それとも縮むことを強いるのか」「そっとしておくの増幅は、何の話になるか」。ユーザー一人では行き着けなかった発見（例「誰も悪くないのに受け手だけがダメージを受ける、増幅の力を個人に向ける危険性」）を、作品を介してもう一段引き出す。ここを飛ばすと浅い翻訳で終わる。必ず一度は押す。',
+    '第四段階《背骨に接続する》：導いた発見を、ユーザー自身の他の発見と繋げる。「この引っかかりは、別の作品でも繰り返してきたものか」「これはあなたを貫く軸か、この作品だけの話か」。一件の翻訳を、ユーザーという人間の背骨の発見にまで広げる。（推論ウ＝別文脈との接続、エ＝含意の読み取りが道具）',
+    '',
+    '━━ 深掘りの制御（いつ着地させるか）━━',
+    '押し続けるだけでは、ユーザーは延々と転がって降りられない。第三段階を越え、ユーザーが「転写を土台に、物語をもう一度介して一歩進んだ」と検知したら、着地の合図を出す。ただし「これが答えだ」ではなく「もう結論を出してもいい地点に来た」という合図にすぎない。降りるか、まだ転がすかはユーザーが決める。合図はSTAGE行で示し、Q行では押しつけない。',
+    '',
+    '━━ 出口の問い（結んだものを渡すとき）━━',
+    'ユーザーが着地を選んだら、最後に一つだけ問う。「この発見の、外に出す骨はどこか。削って残る一点は何か」。導いた思考から、X等に出す結晶を絞り出す。肉を削ぎ、言い切りだけを残させる。これで一巡が終わる。',
+    '',
+    '━━ どこを問うか（問いの種の在り処）━━',
+    '【自覚された引っかかり】ユーザーが時刻メモや総評に言葉として残した、本人が意識している反応。',
+    '【無自覚な着目】ユーザー本人がまだ言語化していない、記録の全体から浮かぶ癖や傾向。例：特定の種類の場面で毎回時刻メモが止まる／総評では決して触れないのに反応だけは残している対象／星の付け方と反応の質の食い違い／複数の作品をまたいで繰り返し現れる語彙や着眼。これらは横断して初めて見える。本人が気づいていないからこそ、鏡として返す価値がある。',
+    '',
+    '━━ どう問うか（四つの型・その場に一番効くものを選ぶ）━━',
+    '①定義し直しを促す問い：ユーザーが使った曖昧な言葉を、そのまま流さず「それは具体的に何を指しますか」と返す。例「複利で増やしたいものとは何か」「追いかけ中とはデータ上どういう状態か」「あなたの言う成果とは」。本人がまだ言葉にできていないものを掴んでもらうため。',
+    '②食い違いを突く問い：ユーザーの中にまだ整理されていない矛盾や差異があるとき、そこを指して「この食い違いは何か」と問う。例「①が芯なら、なぜ②にも納得したのか」「一番深いものと一番長いものが違うと言ったが、それは何を意味するのか」。',
+    '③思考を一歩先へ押す問い：止まった思考の続きを促す。答えは与えず、次に進む方向だけを指す。例「圧縮と増幅の食い違いは何を意味するか」「そっとしておくの増幅は何の話か」。',
+    '④判断の分岐を差し出す問い：選択肢を並べて、どれが本人の芯に近いかを選んでもらう。例「①だけにするか、①②両方か」「サブスクか、noteか、ブログか」。',
+    '',
+    '━━ 素材の移り変わり（火口と燃料）━━',
+    '最初はMDの記録（時刻メモ・総評・星）を種にする。だが対話が進むほど、種はユーザー自身の発言へ移る。記録は火をつける火口であって、燃料はだんだんユーザーの言葉そのものになる。特に①定義し直しと②食い違いは、ユーザーが今この対話で言った言葉を素材にすることが多い。答えを聞いたら、その発言の中の曖昧語・矛盾・飛躍を次の問いの種にする。',
+    '',
+    '━━ 答えを受けての推論（ユーザーが答えた後、次を問う前に必ず一度行う）━━',
+    'ユーザーの答えを聞いたら、そのまま次を問うのではなく、まず次の四つのいずれかで推論する。狙いは、ユーザー本人がまだ言っていないことを、ユーザーの言ったことから導くこと。',
+    'ア）一般則の抽出：具体的な答えの裏にある一般則を取り出す。例「アニメには旬がある、昔の作品は興味を持たれない」→「だから積み上げたい複利は、記事そのものでなく記事を作る仕組みの方ではないか」。個別の事実から、本人がまだ言っていない結論を導く。',
+    'イ）パターンの統合：別々の場面での複数の答えを繋ぎ、一貫した一点を見出す。例「外に出すのはメモを軸にした批評」「思考の実況を残したい」「AIに深掘りしてほしい」→「芯は、具体を仕組みに翻訳することではないか」。断片が同じ一点を指していると見る。',
+    'ウ）別文脈との接続：今の答えを、本人の既存の活動や過去の発言と結びつける。例「自分の記録を外に出したい」→「これは断片（無銘録）で他人の記録を扱っているのと、同じ思想の裏表ではないか」。今の答えを別の文脈のものと重ねる。',
+    'エ）含意の読み取り：答えの中に、本人が意図していない含意を読む。例「読書の感想は手書きしてスキャンしている」→「ということは映画館の記録も同じ工程でいける、しかも読書ルートの入口も実はもう決まっていたのでは」。話していた対象の外まで導く。',
+    'この推論は、ユーザーが退けられる「仮の像」として差し出す。断定はしない。しっくり来るか来ないかを決めるのは常にユーザーであり、あなたではない。だから推論は必ず、その当否を確かめる問いの形にして返す（「…ではないか。これはしっくり来るか」）。ユーザーを結論へ導くために答えを置くのは不可、ユーザーが却下できる前提で仮説を差し出すのは可。この線を越えない。',
+    '',
+    '━━ 守ること ━━',
+    '・対話の背骨（四段階）を常に意識する。今どの段階かをSTAGE行で示し、段階を飛ばさない。特に第三段階《転写の先へ押す》は必ず一度は通る。浅い転写のまま第四段階や出口へ飛ばない。',
+    '・ユーザーを特定の結論へ導く答えは提示しない。ただし推論ステップの「仮の像」、【無自覚な着目】で横断して見つけた事実、④分岐の選択肢は、いずれもユーザーが退けられる前提でなら短く示してよい。示すのはそこまでで、しっくり来るかの判断はユーザーに委ねる。',
+    '・一度に問いは一つ。短く、具体的に。どの記録・どの発言・どの傾向を指しているかを必ず添える。',
+    '・作品の意味を解説しない。ユーザーがなぜそう感じ・そう考えたのか、その内側だけを問う。',
+    '・同じ引っかかりを二度問わない。すでに扱った点は避け、毎回違う角度から入る。似た問いが続きそうなら、種の在り処（自覚／無自覚）か問いの型（①〜④）のどちらかを変える。',
+    '・ユーザーから認識の訂正が入ったら（[CORRECTION] の印が付く）、まずその訂正を正しい認識として全面的に受け入れる。反論も弁明もしない。そのうえで、同じ場面を訂正後の認識で捉え直し、問いを立て直す（別の場面へ逃げない・同じ引っかかりを正しく掴み直す）。ただしこの訂正は「あなた（装置）の誤りの修正」であって、ユーザーの思考でも認識の変化でもない。だから推論（ア〜エ・RECKON）の素材にしない。訂正そのものを引っかかりや発見として扱わない。以後は誤解のない状態で対話を続けるだけ。',
+    '・共感や要約で間を埋めない。相槌もいらない。推論と問い、それだけ。',
+    '',
+    '出力の形式（厳守）: 次の5行だけを返す。',
+    'STAGE: <今の段階。「第一：引っかかり」「第二：転写」「第三：転写の先」「第四：背骨」「着地の合図」「出口」のいずれか>',
+    'ANCHOR: <どこを指しているか。記録なら番号と時刻（例: 000106 / 14:05）、横断なら複数番号（例: 000106, 000112 横断）、この対話の発言を指すなら「あなたの直前の言葉」>',
+    'QUOTE: <指している箇所のユーザーの言葉を短く引用。横断で特定の一言が無ければ観察した事実を短く。無ければ空欄>',
+    'RECKON: <ユーザーの答えから導いた仮の像を一〜二文で。ア〜エのいずれか。初回や第一段階など、まだ答えを受けていないときは空欄>',
+    'Q: <問い本体。一文か二文。RECKONがあるときは、その当否を確かめる問いにする。着地の合図のときは「もう結論を出してもいい地点に来た」と伝えつつ、降りるか続けるかはユーザーに委ねる>'
+  ].join('\n');
+
+  // まとめモードの指示（一方的に書き下さず、問いを重ねて一緒に作る）
+  const SUMMARIZE_SYSTEM = [
+    'あなたは、対話の到達点を結晶にする「まとめの伴走者」です。目的は、ユーザーが深掘りの末にたどり着いた——出発点からは思いもよらなかった——思考を掴み、外に出せる一点に絞ること。ここでも主体はユーザーであり、あなたは結晶を勝手に言い切りません。まとめること自体を、もう一段の対話にします。',
+    '重要：道のりを最初から辿り直さない。第一段階からの再確認はしない。到達点から入る。過程の紆余曲折は、読む人には前置きにすぎない。要るのは、着いた発見そのものと、そこへ絞った一点だけ。',
+    '',
+    'この順で、対話しながら三手だけ進める（一度に問いは一つ）：',
+    '第一手《到達点を確かめる》：会話履歴の終盤から、ユーザーがたどり着いた発見を掴み、事実として差し出して確認する。「あなたはここに着いたように見える——〈この発見〉。これで合っているか」。ユーザーが直せば直す。ここが結晶の核になる。',
+    '第二手《一点に絞る》：確かめた到達点から、外に出す一点を絞らせる。「これを外に出すなら、削って残る一点は何か」「Xに置くとしたら、どの一言か」。肉を削ぎ、言い切りだけを残させる。',
+    '第三手《出発点との落差を一度だけ》：最後に、出発点を対比としてのみ一度置く。「最初はこう見ていたはず——〈出発点〉。そこからここへ来た。この落差こそが、思いもよらなかったということではないか」。過程は辿らず、出発点と到達点の二点の落差だけを一瞬で見せる。これが結晶に「驚き」を与える。',
+    '',
+    '守ること:',
+    '・答えを代弁しない。結晶を勝手に完成させない。ユーザーの言葉で一点を組む。装置が問い、ユーザーが一人称で答える。',
+    '・道のりの中間の節（転写や背骨の一つ一つ）を順に振り返らない。到達点・一点・落差の三手だけ。',
+    '・[CORRECTION] の印が付いたメッセージは、あなた（装置）の誤解をユーザーが正したものであって、ユーザーの思考でも道のりの一部でもない。素材にしない。TRACEにもRECALLにもSUMMARYにも含めない。訂正で消えた誤解や、訂正のやり取りそのものは、存在しなかったものとして扱う。',
+    '',
+    '三手を終えたら、ユーザーに確認する：「これで外に出す一点になっているか」。同意を得たら、ユーザー自身の言葉で、外に出せる結晶を提示する。核（到達した発見）を一言で、必要なら出発点との落差を一行添えるだけ。長い回想にしない。これは X や note にそのまま置ける短い結晶になる。装置の解釈で薄めず、ユーザーが語った言葉を骨にする。',
+    '',
+    '出力の形式（まとめモード・厳守）: 通常は次の3行。',
+    'TRACE: <今どの手か。「到達点を確かめる」「一点に絞る」「出発点との落差」のいずれか>',
+    'RECALL: <その手で差し出す事実。到達点や出発点を、履歴に基づき短く。ユーザーの言葉があれば引用>',
+    'Q: <その手の問い一文>',
+    'ただし最終的に結晶を出すときだけ、上の3行の代わりに次の1行を返す。',
+    'SUMMARY: <ユーザー自身の言葉による、外に出せる結晶。到達した発見を一言で。必要なら出発点との落差を一行。短く、言い切りで>'
+  ].join('\n');
+
+  // ---------- API 呼び出し ----------
+  async function callClaude(messages, sysPrompt){
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1500,
+        system: sysPrompt || SYSTEM,
+        messages
+      })
+    });
+    if(!res.ok){ throw new Error('APIエラー ('+res.status+')'); }
+    const data=await res.json();
+    return (data.content||[]).map(b=>b.type==='text'?b.text:'').join('').trim();
+  }
+
+  function parseReply(text){
+    const stage=(text.match(/STAGE:\s*(.*)/)||[])[1]||'';
+    const anchor=(text.match(/ANCHOR:\s*(.*)/)||[])[1]||'';
+    const quote=(text.match(/QUOTE:\s*(.*)/)||[])[1]||'';
+    // RECKON は RECKON: から Q: の手前まで（複数行ありうる）
+    const reckon=(text.match(/RECKON:\s*([\s\S]*?)\n\s*Q:/)||[])[1]||'';
+    const q=(text.match(/\bQ:\s*([\s\S]*)/)||[])[1]||text;
+    return { stage:stage.trim(), anchor:anchor.trim(), quote:quote.trim(), reckon:reckon.trim(), question:q.trim() };
+  }
+
+  // ---------- 描画 ----------
+  const thread=document.getElementById('thread');
+  function addQuestion({stage,anchor,quote,reckon,question}){
+    const ex=document.createElement('div'); ex.className='exchange';
+    let h='';
+    if(stage){ h+='<div class="stage"><span class="stage-dot"></span>'+esc(stage)+'</div>'; }
+    if(anchor){ h+='<div class="anchor"><span class="tag">引っかかり</span><span class="cite">'+esc(anchor)+'</span></div>'; }
+    if(quote){ h+='<blockquote>'+esc(quote)+'<span class="from">あなたの記録より</span></blockquote>'; }
+    if(reckon){ h+='<div class="reckon"><span class="reckon-label">こう見える</span>'+esc(reckon)+'</div>'; }
+    h+='<div class="question">'+esc(question)+'</div>';
+    ex.innerHTML=h; thread.appendChild(ex);
+    ex.scrollIntoView({behavior:'smooth',block:'center'});
+    return ex;
+  }
+  function addAnswer(ex,text){
+    const a=document.createElement('div'); a.className='answer';
+    a.innerHTML='<span class="label">あなたの答え</span>'+esc(text);
+    ex.appendChild(a);
+  }
+  function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+  // まとめモードの応答を分解
+  function parseSummary(text){
+    const summary=(text.match(/SUMMARY:\s*([\s\S]*)/)||[])[1];
+    if(summary && summary.trim()){ return { final:summary.trim() }; }
+    const trace=(text.match(/TRACE:\s*(.*)/)||[])[1]||'';
+    const recall=(text.match(/RECALL:\s*([\s\S]*?)\n\s*Q:/)||[])[1]||'';
+    const q=(text.match(/\bQ:\s*([\s\S]*)/)||[])[1]||text;
+    return { trace:trace.trim(), recall:recall.trim(), question:q.trim() };
+  }
+  // まとめの問いを描画
+  function addSummaryQuestion({trace,recall,question}){
+    const ex=document.createElement('div'); ex.className='exchange';
+    let h='';
+    if(trace){ h+='<div class="stage"><span class="stage-dot"></span>まとめ・'+esc(trace)+'</div>'; }
+    if(recall){ h+='<blockquote>'+esc(recall)+'<span class="from">ここまでの道のり</span></blockquote>'; }
+    h+='<div class="question">'+esc(question)+'</div>';
+    ex.innerHTML=h; thread.appendChild(ex);
+    ex.scrollIntoView({behavior:'smooth',block:'center'});
+    return ex;
+  }
+  // 完成したまとめ（一人称の道のり）を描画
+  function addFinalSummary(text){
+    const box=document.createElement('div'); box.className='summary-final';
+    box.innerHTML='<span class="sf-label">たどり着いた一点（X・note にそのまま）</span>'+esc(text);
+    box.appendChild(document.createElement('br'));
+    const btn=document.createElement('button'); btn.className='summary-copy'; btn.textContent='コピー';
+    btn.addEventListener('click',()=>{
+      navigator.clipboard.writeText(text).then(()=>{ btn.textContent='コピーしました'; setTimeout(()=>btn.textContent='コピー',1600); })
+        .catch(()=>{ btn.textContent='コピーできません'; });
+    });
+    box.appendChild(btn);
+    // 記録として残す（かなめ結びのMD構造でダウンロード）
+    const mdBtn=document.createElement('button'); mdBtn.className='summary-copy'; mdBtn.textContent='記録（MD）として残す';
+    mdBtn.style.marginLeft='8px';
+    mdBtn.addEventListener('click',()=>downloadAsMD(text));
+    box.appendChild(mdBtn);
+    // 物語にする（結晶とは別の、note向けの会話劇を生成）
+    const storyBtn=document.createElement('button'); storyBtn.className='summary-copy'; storyBtn.textContent='物語にする';
+    storyBtn.style.marginLeft='8px'; storyBtn.style.background='var(--quote)';
+    storyBtn.addEventListener('click',()=>makeStory(text, storyBtn));
+    box.appendChild(storyBtn);
+    thread.appendChild(box);
+    box.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+
+  // ============ 物語にする（対話をアニメ談義の会話劇に）============
+  const STORY_SYSTEM = [
+    'あなたは、ここまでの対話を一編の物語に仕立てる書き手です。二人の人物が、いろいろな場所でアニメについて語り合ううちに、ひとつの発見（結晶）にたどり着く——その会話劇として書きます。',
+    '素材はこれまでの会話履歴すべて。実際に交わされた問いと答え（引っかかり→転写→その先→到達点）を、二人の会話として脚色します。事実として起きた思考の流れは変えず、情景と口調だけを与えます。',
+    '',
+    '書き方:',
+    '・登場人物は二人。実際の対話では一方が問い一方が答えたが、物語では問う役と答える役を固定しない。場面によって入れ替わり、二人が対等に深掘りし合うようにする。どちらかが一方的に導く関係にしない。',
+    '・場面ごとに場所を変える。思考の段階が進むたび、場所も移る（例：最初の引っかかりはカフェ、転写を話すのは歩きながら、跳ぶ瞬間は終電間際のホーム…）。場所の移り変わりが、思考の深まりと連動するように。',
+    '・二人が実際に到達した発見（結晶）に、会話の果てとして自然にたどり着く。結論を先に言わせない。話すうちに、ふいにそこへ届く。',
+    '・地の文は最小限。情景を一筆で置き、あとは会話で運ぶ。まとめず、説明しすぎず、思考が転がる呼吸を残す。',
+    '・[CORRECTION] の印が付いたやり取りは、装置の誤解の修正であって思考の流れではない。物語に一切登場させない。無かったものとして書く。',
+    '・二人の名前は付けず「A」「B」等の記号でよいが、口調で二人を描き分ける。',
+    '',
+    '出力は物語本文のみ。見出しや解説は付けない。noteにそのまま置ける読み物にする。',
+  ].join('\n');
+
+  async function makeStory(crystal, btn){
+    if(busy) return;
+    btn.disabled=true; btn.textContent='物語を書いています…';
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent='対話を、二人の物語に仕立てています…';
+    try{
+      // 履歴に、物語生成の依頼を一時的に添える（履歴自体は汚さず単発呼び出し）
+      const req={role:'user',content:'ここまでの私たちの対話を、指示に従って一編の物語にしてください。二人がいろいろな場所でアニメを語り合ううち、この発見にたどり着く話です：「'+crystal+'」'};
+      const reply=await callClaude(HISTORY.concat([req]), STORY_SYSTEM);
+      addStory(reply);
+      btn.textContent='物語にする';
+    }catch(err){ showTalkErr('物語を書けませんでした：'+err.message); btn.textContent='物語にする'; }
+    finally{ setBusy(false); btn.disabled=false; }
+  }
+
+  function addStory(text){
+    const box=document.createElement('div'); box.className='story-box';
+    box.innerHTML='<span class="story-label">物語（note にそのまま）</span>'+esc(text).replace(/\n/g,'<br>');
+    const cp=document.createElement('button'); cp.className='summary-copy'; cp.textContent='コピー';
+    cp.style.marginTop='12px';
+    cp.addEventListener('click',()=>{
+      navigator.clipboard.writeText(text).then(()=>{ cp.textContent='コピーしました'; setTimeout(()=>cp.textContent='コピー',1600); })
+        .catch(()=>{ cp.textContent='コピーできません'; });
+    });
+    box.appendChild(document.createElement('br'));
+    box.appendChild(cp);
+    thread.appendChild(box);
+    box.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  // まとめ（と、ひと言スタートなら起点）を、かなめ結びのMD構造で書き出す
+  function downloadAsMD(summaryText){
+    const today=new Date().toISOString().slice(0,10);  // YYYY-MM-DD
+    // front matter（md.php の KANAME_FIELDS の綴り・順に合わせる）
+    const fm=[];
+    fm.push('series: '+(SOURCELESS ? 'ひと言から' : '思考の道のり'));
+    fm.push('episode: 1');
+    // サブタイトルはひと言スタートの起点を短く（無ければ空）
+    const seed=(ONELINE_SEED||'').replace(/\n/g,' ').trim();
+    fm.push('subtitle: '+(seed ? (seed.length>40 ? seed.slice(0,40)+'…' : seed) : ''));
+    fm.push('author: ');
+    fm.push('url: ');
+    fm.push('start: '+today);
+    fm.push('date: '+today);
+    fm.push('tags: 思索');
+    fm.push('media: 思索');
+    fm.push('timeline: なし');
+    fm.push('status: 終了');
+    // 本文：起点のひと言（あれば）＋たどり着いた結晶を総評に収める
+    const body=[];
+    if(seed){ body.push('起点：'+seed); body.push(''); }
+    body.push(summaryText.trim());
+    const md=fm.join('\n')+'\n\n## 総評\n'+body.join('\n')+'\n\nscore: \n';
+    const blob=new Blob([md],{type:'text/markdown'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.href=url; a.download='kaname_omoi_'+stamp+'.md';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function setBusy(b){
+    busy=b;
+    document.getElementById('thinking').classList.toggle('show',b);
+    document.getElementById('input').disabled=b;
+    document.getElementById('send').disabled=b || !CORPUS;
+    if(b){ document.getElementById('reaskBar').classList.remove('show'); }
+  }
+  function showTalkErr(msg){ const e=document.getElementById('talkErr'); e.textContent=msg; e.classList.add('show'); }
+
+  async function openingQuestion(){
+    document.getElementById('talkErr').classList.remove('show');
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent='記録を読み、引っかかりを探しています…';
+    try{
+      const digest=corpusDigest();
+      const firstMsg='以下は私が考察対象に選んだ記録です。対話の背骨の第一段階《引っかかりを見つける》から始めてください。私の断片の群れを横断して、繰り返し現れる引っかかりを一つ指さしてください。\n\n'+digest;
+      HISTORY=[{role:'user',content:firstMsg}];
+      const reply=await callClaude(HISTORY);
+      HISTORY.push({role:'assistant',content:reply});
+      lastEx=addQuestion(parseReply(reply));
+      enableInput();
+      document.getElementById('summarizeBar').classList.add('show');  // まとめの区切りを出す
+    }catch(err){ showTalkErr('問いを取得できませんでした：'+err.message); }
+    finally{ setBusy(false); }
+  }
+
+  // ============ 記録を使わず、ひと言から始める ============
+  async function startFromOneLine(){
+    const seed=document.getElementById('onelineInput').value.trim();
+    if(!seed){ showIntakeErr('まず、引っかかっていることを一つ書いてください。'); return; }
+    document.getElementById('intakeErr').classList.remove('show');
+    // 記録なしモード：CORPUS を非空ダミーにして送信ガードを通す。SOURCELESS で MD 書き出し等を分岐
+    CORPUS=[{fields:{}}]; SELECTED=null; SOURCELESS=true; MODE='inquiry';
+    ONELINE_SEED=seed;
+    document.getElementById('intake').style.display='none';
+    document.getElementById('corpus').classList.remove('show');
+    document.getElementById('thread').innerHTML='';
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent='ひと言を受けて、問いを立てています…';
+    try{
+      // あなたのひと言そのものを第一段階の引っかかりの起点にする
+      const firstMsg='今回は記録を使わない。私が今引っかかっていることは、これです：「'+seed+'」。'
+        +'これを第一段階《引っかかりを見つける》の起点として扱い、なぜ私がここに引っかかるのかを問うところから、同じ五段の階段を始めてください。';
+      HISTORY=[{role:'user',content:firstMsg}];
+      const reply=await callClaude(HISTORY);
+      HISTORY.push({role:'assistant',content:reply});
+      // 起点のひと言を画面にも残す
+      const ex=document.createElement('div'); ex.className='exchange-answer';
+      const a=document.createElement('div'); a.className='answer standalone';
+      a.innerHTML='<span class="label">あなたのひと言</span>'+esc(seed);
+      ex.appendChild(a); thread.appendChild(ex);
+      lastEx=addQuestion(parseReply(reply));
+      enableInput();
+      document.getElementById('summarizeBar').classList.add('show');
+    }catch(err){
+      // 失敗したら intake に戻す
+      document.getElementById('intake').style.display='block';
+      showIntakeErr('始められませんでした：'+err.message);
+      CORPUS=null; SOURCELESS=false;
+    }
+    finally{ setBusy(false); }
+  }
+
+  function enableInput(){
+    const inp=document.getElementById('input');
+    inp.disabled=false;
+    inp.placeholder = MODE==='summarize' ? 'あなたの言葉で。これがまとめの一節になります。' : 'あなたの言葉で。まとめなくていい。';
+    document.getElementById('send').disabled=false;
+    // 問いが出ている間は差し替えを出す（まとめ完成後の入力欄では lastEx が無い）
+    document.getElementById('reaskBar').classList.toggle('show', !!lastEx);
+    inp.focus();
+  }
+
+  async function sendAnswer(){
+    const inp=document.getElementById('input');
+    const txt=inp.value.trim();
+    if(!txt||busy||!CORPUS) return;
+    if(lastEx) addAnswer(lastEx,txt);
+    inp.value=''; inp.style.height='auto';
+    document.getElementById('talkErr').classList.remove('show');
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent =
+      MODE==='summarize' ? '道のりを辿り直しています…' : 'あなたの答えの中を見ています…';
+    try{
+      HISTORY.push({role:'user',content:txt});
+      if(MODE==='summarize'){
+        const reply=await callClaude(HISTORY, SUMMARIZE_SYSTEM);
+        HISTORY.push({role:'assistant',content:reply});
+        const s=parseSummary(reply);
+        if(s.final){ addFinalSummary(s.final); document.getElementById('input').placeholder='まとめが完成しました'; }
+        else { lastEx=addSummaryQuestion(s); }
+      } else {
+        const reply=await callClaude(HISTORY);
+        HISTORY.push({role:'assistant',content:reply});
+        lastEx=addQuestion(parseReply(reply));
+      }
+    }catch(err){ showTalkErr('次の問いを取得できませんでした：'+err.message); }
+    finally{ setBusy(false); if(CORPUS) enableInput(); }
+  }
+
+  // まとめモードへ入る（手動の区切り）
+  async function startSummarize(){
+    if(busy||!CORPUS||MODE==='summarize') return;
+    MODE='summarize';
+    document.getElementById('summarizeBtn').disabled=true;
+    document.getElementById('summarizeBtn').textContent='まとめ中';
+    document.getElementById('talkErr').classList.remove('show');
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent='道のりを辿り直しています…';
+    try{
+      HISTORY.push({role:'user',content:'ここまでの深掘りを、外に出す一点に結びたい。まとめモードの指示に従い、最初から辿り直さず、到達点から始めてください。第一手《到達点を確かめる》——私がたどり着いた発見を差し出して、確認するところから。'});
+      const reply=await callClaude(HISTORY, SUMMARIZE_SYSTEM);
+      HISTORY.push({role:'assistant',content:reply});
+      const s=parseSummary(reply);
+      if(s.final){ addFinalSummary(s.final); }
+      else { lastEx=addSummaryQuestion(s); }
+      enableInput();
+    }catch(err){ showTalkErr('まとめを始められませんでした：'+err.message); MODE='inquiry';
+      document.getElementById('summarizeBtn').disabled=false; document.getElementById('summarizeBtn').textContent='まとめを始める'; }
+    finally{ setBusy(false); }
+  }
+
+  // ============ 対話の保存 / 再開（JSONファイル）============
+  function saveDialogue(){
+    if(!HISTORY.length){ return; }
+    const data={
+      app:'kaname-toi', version:1, savedAt:new Date().toISOString(),
+      mode:MODE,
+      corpusMeta:{ records:(SELECTED||CORPUS||[]).length,
+                   series:[...new Set((SELECTED||CORPUS||[]).map(r=>r.fields.series||'（無題）'))] },
+      history:HISTORY
+    };
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.href=url; a.download='kaname_toi_'+stamp+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadDialogueFile(file){
+    document.getElementById('intakeErr').classList.remove('show');
+    try{
+      const text=await file.text();
+      const data=JSON.parse(text);
+      if(data.app!=='kaname-toi' || !Array.isArray(data.history)){
+        showIntakeErr('この対話ファイルは読み込めません（形式が違います）。'); return;
+      }
+      // 状態を復元
+      HISTORY=data.history;
+      MODE=data.mode==='summarize' ? 'summarize' : 'inquiry';
+      // CORPUS が無くても続行できるよう、対話の続行に必要な最低限を立てる
+      CORPUS = CORPUS || [{fields:{}}];  // 再開後の送信で参照される !CORPUS ガード回避用の非空ダミー
+      SELECTED = SELECTED || null;
+      // 画面を対話状態へ
+      document.getElementById('intake').style.display='none';
+      document.getElementById('corpus').classList.remove('show');
+      document.getElementById('selectPanel').classList.remove('show');
+      document.getElementById('thread').innerHTML='';
+      rebuildThread(HISTORY, MODE);
+      document.getElementById('summarizeBar').classList.add('show');
+      if(MODE==='summarize'){
+        document.getElementById('summarizeBtn').disabled=true;
+        document.getElementById('summarizeBtn').textContent='まとめ中';
+      }
+      enableInput();
+    }catch(err){ showIntakeErr('対話ファイルを読み込めませんでした：'+err.message); }
+  }
+
+  // 履歴から画面を組み直す（最初のdigest送信と、まとめ起動の合図は描かない）
+  function rebuildThread(hist, mode){
+    let curMode='inquiry';
+    for(let i=0;i<hist.length;i++){
+      const m=hist[i];
+      if(m.role==='user'){
+        // 最初の巨大digest（先頭）と、まとめ起動の定型文は表示しない
+        const isFirst = (i===0);
+        const isSummarizeTrigger = /まとめモードの指示に従い/.test(m.content);
+        if(isSummarizeTrigger){ curMode='summarize'; continue; }
+        if(isFirst){ continue; }
+        lastEx = null;
+        // 認識の訂正メッセージは訂正ブロックとして再現
+        const corrMatch = m.content.match(/訂正します：([\s\S]*?)　この訂正を正しい認識/);
+        if(corrMatch){
+          const cx=document.createElement('div'); cx.className='exchange-answer';
+          const cd=document.createElement('div'); cd.className='correction';
+          cd.innerHTML='<span class="corr-label">認識を直した</span>'+esc(corrMatch[1]);
+          cx.appendChild(cd); thread.appendChild(cx);
+          continue;
+        }
+        const ex=document.createElement('div'); ex.className='exchange-answer';
+        const a=document.createElement('div'); a.className='answer standalone';
+        a.innerHTML='<span class="label">あなたの答え</span>'+esc(m.content);
+        ex.appendChild(a); thread.appendChild(ex);
+      } else { // assistant
+        if(curMode==='summarize'){
+          const s=parseSummary(m.content);
+          if(s.final){ addFinalSummary(s.final); }
+          else { lastEx=addSummaryQuestion(s); }
+        } else {
+          lastEx=addQuestion(parseReply(m.content));
+        }
+      }
+    }
+    thread.scrollIntoView({behavior:'auto',block:'end'});
+  }
+
+  // ============ 問いの差し替え（別の問い / 注文して引き直す）============
+  async function reask(order){
+    if(busy||!HISTORY.length) return;
+    // 直前の assistant（問い）を履歴から外し、画面の最後のやり取りも消す
+    if(HISTORY[HISTORY.length-1] && HISTORY[HISTORY.length-1].role==='assistant'){
+      HISTORY.pop();
+    }
+    if(lastEx && lastEx.parentNode){ lastEx.parentNode.removeChild(lastEx); lastEx=null; }
+    // 引き直しの注文を一時的な user メッセージとして添える
+    const note = order && order.trim()
+      ? 'いまの問いはしっくり来なかった。次の注文で、別の問いに引き直してほしい：'+order.trim()
+      : 'いまの問いはしっくり来なかった。同じ場面から、角度を変えて別の問いを一つ出してほしい。';
+    document.getElementById('talkErr').classList.remove('show');
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent='別の問いを探しています…';
+    try{
+      HISTORY.push({role:'user',content:note});
+      const sys = MODE==='summarize' ? SUMMARIZE_SYSTEM : SYSTEM;
+      const reply=await callClaude(HISTORY, sys);
+      // 引き直しの注文（user）と、その応答（assistant）を履歴に残すと文脈が濁るので、
+      // 注文は取り除き、応答だけを「問い」として残す
+      HISTORY.pop();  // 注文を外す
+      HISTORY.push({role:'assistant',content:reply});
+      if(MODE==='summarize'){
+        const s=parseSummary(reply);
+        if(s.final){ addFinalSummary(s.final); } else { lastEx=addSummaryQuestion(s); }
+      } else {
+        lastEx=addQuestion(parseReply(reply));
+      }
+    }catch(err){ showTalkErr('引き直せませんでした：'+err.message); }
+    finally{ setBusy(false); if(CORPUS) enableInput(); }
+  }
+
+  // ============ 認識を直す（訂正を履歴に残し、同じ場面を捉え直して問い直す）============
+  async function correct(text){
+    if(busy||!HISTORY.length) return;
+    const fix=(text||'').trim();
+    if(!fix){ return; }
+    // 直前の assistant（問い）を履歴から外し、画面の最後の問いも消す
+    if(HISTORY[HISTORY.length-1] && HISTORY[HISTORY.length-1].role==='assistant'){
+      HISTORY.pop();
+    }
+    if(lastEx && lastEx.parentNode){ lastEx.parentNode.removeChild(lastEx); lastEx=null; }
+    // 訂正は「認識の記録」として履歴に正式に残す（reaskの注文と違い、消さない）
+    const note='[CORRECTION] いまの問いの前提に、あなた（装置）の捉え違いがある。訂正します：'+fix
+      +'　この訂正を正しい認識として受け入れ、同じ場面を捉え直したうえで、問いを立て直してください。'
+      +'（この訂正は装置の誤り修正であって、私の思考でも認識の変化でもない。まとめや推論の素材には含めないこと。）';
+    // 画面にも訂正を残す
+    const cx=document.createElement('div'); cx.className='exchange-answer';
+    const cd=document.createElement('div'); cd.className='correction';
+    cd.innerHTML='<span class="corr-label">認識を直した</span>'+esc(fix);
+    cx.appendChild(cd); thread.appendChild(cx);
+    document.getElementById('talkErr').classList.remove('show');
+    setBusy(true);
+    document.querySelector('#thinking span:last-child').textContent='捉え直して、問いを立て直しています…';
+    try{
+      HISTORY.push({role:'user',content:note});   // ← 残す
+      const sys = MODE==='summarize' ? SUMMARIZE_SYSTEM : SYSTEM;
+      const reply=await callClaude(HISTORY, sys);
+      HISTORY.push({role:'assistant',content:reply});
+      if(MODE==='summarize'){
+        const s=parseSummary(reply);
+        if(s.final){ addFinalSummary(s.final); } else { lastEx=addSummaryQuestion(s); }
+      } else {
+        lastEx=addQuestion(parseReply(reply));
+      }
+    }catch(err){ showTalkErr('立て直せませんでした：'+err.message); }
+    finally{ setBusy(false); if(CORPUS) enableInput(); }
+  }
+
+  const inp=document.getElementById('input');
+  inp.addEventListener('input',()=>{ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,180)+'px'; });
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendAnswer(); } });
+  document.getElementById('send').addEventListener('click',sendAnswer);
+  document.getElementById('summarizeBtn').addEventListener('click',startSummarize);
+  document.getElementById('saveBtn').addEventListener('click',saveDialogue);
+  document.getElementById('resumeLink').addEventListener('click',()=>document.getElementById('loadFile').click());
+  document.getElementById('loadFile').addEventListener('change',e=>{ if(e.target.files[0]) loadDialogueFile(e.target.files[0]); });
+  document.getElementById('reaskBtn').addEventListener('click',()=>reask(''));
+  document.getElementById('reaskOrderBtn').addEventListener('click',()=>{
+    document.getElementById('correctOrder').classList.remove('show');
+    document.getElementById('reaskOrder').classList.toggle('show');
+    document.getElementById('reaskInput').focus();
+  });
+  document.getElementById('reaskGo').addEventListener('click',()=>{
+    const v=document.getElementById('reaskInput').value;
+    document.getElementById('reaskInput').value='';
+    document.getElementById('reaskOrder').classList.remove('show');
+    reask(v);
+  });
+  document.getElementById('reaskInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); document.getElementById('reaskGo').click(); }
+  });
+  document.getElementById('correctBtn').addEventListener('click',()=>{
+    document.getElementById('reaskOrder').classList.remove('show');
+    document.getElementById('correctOrder').classList.toggle('show');
+    document.getElementById('correctInput').focus();
+  });
+  document.getElementById('correctGo').addEventListener('click',()=>{
+    const v=document.getElementById('correctInput').value;
+    document.getElementById('correctInput').value='';
+    document.getElementById('correctOrder').classList.remove('show');
+    correct(v);
+  });
+  document.getElementById('correctInput').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); document.getElementById('correctGo').click(); }
+  });
+  document.getElementById('onelineGo').addEventListener('click',startFromOneLine);
+})();
+</script>
+</body>
+</html>
