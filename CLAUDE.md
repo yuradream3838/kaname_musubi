@@ -56,7 +56,7 @@ score: 4
 ## api.php
 
 - `GET /api.php` 全件、`GET /api.php?id=000123` 1件（無ければ 404 `{"error":"not_found"}`）。
-- 認証失敗は 401 `{"error":"auth"}`。`KANAME_API_TOKEN_SHA256` が空の間は常に 401。
+- トークンは64桁の小文字16進（`openssl rand -hex 32`）。形式外・不一致・欠落は 401 `{"error":"auth"}`。`KANAME_API_TOKEN_SHA256` が空の間は常に 401。
 - 返す形: `{app, count, generatedAt, watching[], records[{id, series, episode, subtitle, author, url, start, date, tags[], media, timeline, status, duration, resume, notes[{t,text}], review, score}]}`。空の値は null（tags/notes は空配列）。
 - CORS なし（Muse はサーバー間通信）。
 

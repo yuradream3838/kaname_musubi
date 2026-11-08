@@ -9,7 +9,8 @@
 // =============================================================
 require_once __DIR__ . '/md.php';
 
-// トークンの SHA-256（16進64文字）。トークン本体はここにもどこにも書かない。
+// トークンは64桁の小文字16進（openssl rand -hex 32）。その SHA-256（16進64文字）をここに置く。
+// トークン本体はここにもどこにも書かない。
 //   手元で:  printf '%s' "$TOKEN" | shasum -a 256
 // 空のままなら全リクエストを 401 で拒否する（閉じた状態が既定）。
 const KANAME_API_TOKEN_SHA256 = '';
@@ -41,8 +42,9 @@ function api_token_from_request() {
 function api_authorized() {
     $expected = strtolower(trim(KANAME_API_TOKEN_SHA256));
     if (!preg_match('/\A[0-9a-f]{64}\z/', $expected)) return false; // 未設定なら常に拒否
+    // トークンは64桁の小文字16進のみ受け付ける（それ以外は照合せず拒否）
     $token = trim(api_token_from_request());
-    if ($token === '') return false;
+    if (!preg_match('/\A[0-9a-f]{64}\z/', $token)) return false;
     return hash_equals($expected, hash('sha256', $token));
 }
 
