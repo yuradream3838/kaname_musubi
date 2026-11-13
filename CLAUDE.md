@@ -44,6 +44,7 @@ score: 4
 - front matter の順序は `$KANAME_FIELDS` の順。tags の区切りは `, `（読むときは `,、，` を許容）。
 - `kaname_data/_watching.txt` は追いかけ中シリーズの代表話の6桁番号を1行1つ。6桁 MD 以外は一覧・採番・API の対象外。
 - 番号は保存の瞬間に確定（`kaname_next_id()`）。
+- edit.php と timeline.php は保存ボタンなしの自動保存（入力が止まって0.8秒で fetch POST、画面を離れるときに送り切る）。new.php は採番があるので手動の「作成」ボタンのまま。
 
 ## 決まりごと
 

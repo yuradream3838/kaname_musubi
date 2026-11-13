@@ -2,7 +2,8 @@
 // =============================================================
 // edit.php — 個別編集（門番の内側）
 //   ・開くとき: MDを分解して各欄に配る
-//   ・確定するとき: 各欄を集めて config の型どおりに組み立て直す
+//   ・入力するたび: 各欄を集めて config の型どおりに組み立て直す（自動保存）
+//     自動保存は fetch で自分自身へ POST(action=save, ajax=1)。成功で {ok:true}。
 //   フォームが構造を握るので、頭の項目や区切りは壊れようがない。
 // =============================================================
 require_once __DIR__ . '/auth.php';
@@ -57,7 +58,14 @@ if (($_POST['action'] ?? '') === 'save') {
         $finished = true;
     }
 
-    file_put_contents($path, kaname_build($data));
+    $ok = file_put_contents($path, kaname_build($data));
+
+    // 自動保存（fetch）は JSON だけ返して終わる
+    if (($_POST['ajax'] ?? '') === '1') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => $ok !== false]);
+        exit;
+    }
     $saved = true;
 }
 
@@ -112,11 +120,14 @@ button:hover{opacity:.9}
 .finish-btn{background:var(--card);color:var(--ink-soft);border:0.5px solid var(--line)}
 .finish-btn:hover{background:var(--paper);opacity:1;color:var(--ink)}
 .finish-note{font-size:12px;color:var(--ink-faint);margin-top:6px}
+.save-state{position:fixed;right:14px;bottom:14px;font-size:12px;color:var(--ink-soft);background:var(--card);border:0.5px solid var(--line);border-radius:16px;padding:6px 12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.save-state.ok{color:var(--accent)}
+.save-state.err{color:#a5402d;border-color:#e3b8ae}
 </style></head><body>
 <div class="masthead"><h1>番号 <?= h($id) ?></h1><a href="list.php">← 一覧へ</a></div>
 <?php if ($saved): ?><div class="saved">保存しました。</div><?php endif; ?>
 
-<form method="post">
+<form method="post" id="editForm">
   <input type="hidden" name="action" value="save">
   <input type="hidden" name="id" value="<?= h($id) ?>">
 
@@ -182,7 +193,7 @@ button:hover{opacity:.9}
     <?php endforeach; ?>
   </select>
 
-  <div class="bar"><button type="submit" name="do" value="save">確定して保存</button></div>
+  <span class="save-state" id="saveState">入力すると自動で保存されます</span>
 
   <div class="finish-bar">
   <?php if (($f['status'] ?? '') === '終了'): ?>
@@ -192,8 +203,88 @@ button:hover{opacity:.9}
   <?php else: ?>
     <button type="submit" name="do" value="finish" class="finish-btn"
       onclick="return confirm('今の入力内容で保存し、進捗を終了・終了日を今日にします。よろしいですか？');">記録を終える（今の内容を保存・終了日を今日に）</button>
-    <p class="finish-note">押すと、いま編集中の内容がそのまま保存され、進捗が「終了」・終了日に今日が入ります。保存を押していなくても入力は失われません。</p>
+    <p class="finish-note">押すと、いま編集中の内容がそのまま保存され、進捗が「終了」・終了日に今日が入ります。</p>
   <?php endif; ?>
   </div>
 </form>
+<script>
+(function(){
+  var form=document.getElementById('editForm');
+  var state=document.getElementById('saveState');
+  var url=location.pathname+'?id='+encodeURIComponent(<?= json_encode($id) ?>);
+  var timer=null, inflight=false, again=false, dirty=false, retried=false, idleWaiters=[];
+
+  function show(cls,txt){ state.className='save-state'+(cls?' '+cls:''); state.textContent=txt; }
+  function body(){
+    var b=new URLSearchParams(new FormData(form));
+    b.set('do','save'); b.set('ajax','1');
+    return b;
+  }
+  function touch(){
+    dirty=true; clearTimeout(timer); timer=setTimeout(run,800);
+    show('','未保存の変更…');
+  }
+  function idle(){ return !inflight && !dirty && !timer; }
+  function run(keep){
+    clearTimeout(timer); timer=null;
+    if(inflight){ again=true; return; }
+    if(!dirty) return;
+    dirty=false; inflight=true; show('','保存中…');
+    fetch(url,{method:'POST',credentials:'same-origin',keepalive:!!keep,
+      headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:body().toString()})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!(j&&j.ok)) throw new Error('ng');
+        retried=false;
+        var d=new Date();
+        show('ok','保存しました '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'));
+      })
+      .catch(function(){
+        dirty=true;
+        show('err','保存できませんでした（ログインが切れていないか確認してください）');
+        if(!retried){ retried=true; setTimeout(function(){ if(dirty&&!timer) run(); },5000); }
+      })
+      .then(function(){
+        inflight=false;
+        if(again){ again=false; run(); return; }
+        if(idle()){ var w=idleWaiters; idleWaiters=[]; w.forEach(function(f){ f(); }); }
+      });
+  }
+  // 画面を離れるとき：未保存があれば送り切る
+  function flush(){
+    if(submitting) return;
+    clearTimeout(timer); timer=null;
+    if(!dirty) return;
+    if(inflight){ if(navigator.sendBeacon(url, body())) dirty=false; }
+    else run(true);
+  }
+
+  form.addEventListener('input',touch);
+  form.addEventListener('change',touch);
+  // 入力欄で Enter を押しても送信（＝「終える」）しない。代わりにすぐ保存
+  form.addEventListener('keydown',function(e){
+    if(e.key==='Enter' && e.target.tagName==='INPUT'){ e.preventDefault(); run(); }
+  });
+
+  // 「記録を終える」：自動保存の送信中なら終わるのを待ってから送る
+  var submitting=false;
+  form.addEventListener('submit',function(e){
+    clearTimeout(timer); timer=null; dirty=false;
+    if(inflight){
+      e.preventDefault();
+      var btn=e.submitter;
+      idleWaiters.push(function(){
+        submitting=true;
+        if(btn&&btn.name){ var h=document.createElement('input'); h.type='hidden'; h.name=btn.name; h.value=btn.value; form.appendChild(h); }
+        form.submit();
+      });
+      return;
+    }
+    submitting=true;
+  });
+
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden') flush(); });
+  window.addEventListener('pagehide',flush);
+})();
+</script>
 </body></html>

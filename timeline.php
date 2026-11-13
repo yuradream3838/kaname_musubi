@@ -6,7 +6,8 @@
 //   総評を ## 総評、星を末尾 score に入れて保存する。
 //   front matter（シリーズ名・タグ・media・timeline 等）は触らず丸ごと保持。
 //
-//   保存は fetch で自分自身へ POST(action=save_timeline)。成功で {ok:true}。
+//   保存は自動：入力のたびに fetch で自分自身へ POST(action=save_timeline)。成功で {ok:true}。
+//   一時停止したとき・画面を離れるときも、その時刻を中断位置として保存する。
 // =============================================================
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/md.php';
@@ -161,8 +162,6 @@ $boot = json_encode([
   .star:hover{transform:scale(1.15)}
   .star.on{color:var(--star)}
   .footer-actions{display:flex;gap:10px;align-items:center;margin-top:24px;padding-top:18px;border-top:0.5px solid var(--line)}
-  .act{font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border-radius:8px;padding:11px 24px;border:none;background:var(--accent);color:#fff;transition:opacity .12s}
-  .act:hover{opacity:.9}
   .save-state{font-size:13px;color:var(--ink-soft)}
   .save-state.ok{color:var(--accent)}
   .save-state.err{color:#a04a3a}
@@ -194,7 +193,7 @@ $boot = json_encode([
     <input type="text" id="durInput" class="dur-input" placeholder="例 2:30:00 / 45:00">
     <span class="dur-readout" id="durReadout"></span>
   </div>
-  <div class="timer-hint">再生と同時に <b>Tabキー</b> で開始。広告が来たら <b>Tab</b> で止める・戻す（本編内の経過時間だけを刻みます）。総再生時間を入れると「残り」も分かります。保存すると、今の時刻を中断位置として覚え、次に開くとそこから再開します。</div>
+  <div class="timer-hint">再生と同時に <b>Tabキー</b> で開始。広告が来たら <b>Tab</b> で止める・戻す（本編内の経過時間だけを刻みます）。総再生時間を入れると「残り」も分かります。入力は自動で保存され、一時停止したときや画面を離れたときの時刻を中断位置として覚えて、次に開くとそこから再開します。</div>
 
   <div class="jot-wrap">
     <textarea class="jot" id="jot" rows="1" placeholder="思ったことをそのまま。まとめなくていい。Enterで刻む（Shift+Enterで改行）"></textarea>
@@ -223,8 +222,7 @@ $boot = json_encode([
   </div>
 
   <div class="footer-actions">
-    <button class="act" id="saveBtn">保存する</button>
-    <span class="save-state" id="saveState"></span>
+    <span class="save-state" id="saveState">入力すると自動で保存されます</span>
   </div>
 
 <script>
@@ -276,7 +274,7 @@ $boot = json_encode([
   }
   // 総再生時間の初期表示と入力反映
   if(duration>0) durInput.value=fmt(duration);
-  durInput.addEventListener('input',function(){ duration=parseDur(durInput.value); render(); });
+  durInput.addEventListener('input',function(){ duration=parseDur(durInput.value); render(); touch(); });
   render();
 
   var playBtn=document.getElementById('playBtn');
@@ -290,6 +288,7 @@ $boot = json_encode([
   function pause(){
     running=false; clock.classList.add('paused'); timerBar.classList.add('stopped');
     document.body.classList.add('stopped'); playBtn.textContent='再開'; clearInterval(tickId);
+    if(elapsed!==savedResume) touch();   // 止めた時刻を中断位置として保存
   }
   playBtn.addEventListener('click',function(){ running?pause():start(); });
   document.getElementById('resetBtn').addEventListener('click',function(){
@@ -305,7 +304,7 @@ $boot = json_encode([
   var starEls=document.querySelectorAll('#stars .star');
   function paintStars(){ starEls.forEach(function(s){ s.classList.toggle('on', +s.dataset.v<=starV); }); }
   starEls.forEach(function(st){
-    st.addEventListener('click',function(){ starV=+st.dataset.v; paintStars(); });
+    st.addEventListener('click',function(){ starV=+st.dataset.v; paintStars(); touch(); });
   });
   paintStars();
 
@@ -317,7 +316,7 @@ $boot = json_encode([
       e.preventDefault();
       var txt=jot.value.trim(); if(!txt) return;
       entries.push({t:elapsed, text:txt});
-      jot.value=''; jot.style.height='auto'; draw();
+      jot.value=''; jot.style.height='auto'; draw(); touch();
     }
   });
 
@@ -335,7 +334,7 @@ $boot = json_encode([
       // タップで本文を編集（打ち間違いの修正）
       bd.addEventListener('click',function(){ startEditEntry(i, bd); });
       var del=document.createElement('div'); del.className='entry-del'; del.textContent='×';
-      del.addEventListener('click',function(){ entries.splice(i,1); draw(); });
+      del.addEventListener('click',function(){ entries.splice(i,1); draw(); touch(); });
       row.appendChild(tm); row.appendChild(bd); row.appendChild(del);
       wrap.appendChild(row);
     });
@@ -349,16 +348,18 @@ $boot = json_encode([
     ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px';
     ta.addEventListener('input',function(){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; });
+    var done=false;
     var commit=function(){
+      if(done) return; done=true;
       var v=ta.value.trim();
-      if(v==='') { entries.splice(i,1); }     // 空にしたら削除
-      else { entries[i].text=v; }
+      if(v==='') { entries.splice(i,1); touch(); }     // 空にしたら削除
+      else if(v!==entries[i].text) { entries[i].text=v; touch(); }
       draw();
     };
     // Enterで確定（Shift+Enterで改行）、フォーカスが外れても確定
     ta.addEventListener('keydown',function(e){
       if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); commit(); }
-      else if(e.key==='Escape'){ draw(); }   // 取り消し
+      else if(e.key==='Escape'){ done=true; draw(); }   // 取り消し
     });
     ta.addEventListener('blur',commit);
   }
@@ -369,30 +370,62 @@ $boot = json_encode([
     return entries.map(function(en){ return '- ['+fmt(en.t)+'] '+en.text; }).join('\n');
   }
 
-  // 保存：fetch で自分自身へ POST
-  var saveBtn=document.getElementById('saveBtn');
+  // 自動保存：入力が止まって0.8秒で fetch POST。送信は1本ずつ順番に
   var saveState=document.getElementById('saveState');
-  saveBtn.addEventListener('click',function(){
-    saveState.className='save-state'; saveState.textContent='保存中…';
+  var saveUrl=location.pathname+'?id='+encodeURIComponent(BOOT.id);
+  var saveTimer=null, inflight=false, again=false, dirty=false, retried=false;
+  var savedResume=BOOT.resume||0;
+  function show(cls,txt){ saveState.className='save-state'+(cls?' '+cls:''); saveState.textContent=txt; }
+  function saveBody(){
     var body=new URLSearchParams();
     body.set('action','save_timeline');
     body.set('id', BOOT.id);
     body.set('timeline_notes', buildMemo());
     body.set('review', document.getElementById('summary').value);
     body.set('score', String(starV));
-    body.set('resume', String(elapsed));       // 押した瞬間のタイマー値＝中断位置
+    body.set('resume', String(elapsed));       // 保存した瞬間のタイマー値＝中断位置
     body.set('duration', String(duration||0)); // 総再生時間
-    fetch(location.pathname+'?id='+encodeURIComponent(BOOT.id), {
-      method:'POST',
+    return body;
+  }
+  function touch(){
+    dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(save,800);
+    show('','未保存の変更…');
+  }
+  function save(keep){
+    clearTimeout(saveTimer); saveTimer=null;
+    if(inflight){ again=true; return; }
+    if(!dirty) return;
+    dirty=false; inflight=true; show('','保存中…');
+    var body=saveBody();
+    fetch(saveUrl, {
+      method:'POST', credentials:'same-origin', keepalive:!!keep,
       headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
       body: body.toString()
     }).then(function(r){ return r.json(); })
       .then(function(j){
-        if(j && j.ok){ saveState.className='save-state ok'; saveState.textContent='保存しました'; }
-        else { saveState.className='save-state err'; saveState.textContent='保存に失敗しました'; }
+        if(!(j && j.ok)) throw new Error('ng');
+        retried=false; savedResume=+body.get('resume');
+        var d=new Date();
+        show('ok','保存しました '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'));
       })
-      .catch(function(){ saveState.className='save-state err'; saveState.textContent='通信に失敗しました'; });
-  });
+      .catch(function(){
+        dirty=true;
+        show('err','保存できませんでした（ログインが切れていないか確認してください）');
+        if(!retried){ retried=true; setTimeout(function(){ if(dirty&&!saveTimer) save(); },5000); }
+      })
+      .then(function(){ inflight=false; if(again){ again=false; save(); } });
+  }
+  // 画面を離れるとき：未保存の変更か、進んだタイマー（中断位置）を送り切る
+  function flush(){
+    clearTimeout(saveTimer); saveTimer=null;
+    if(started && elapsed!==savedResume) dirty=true;
+    if(!dirty) return;
+    if(inflight){ var b=saveBody(); if(navigator.sendBeacon(saveUrl, b)){ dirty=false; savedResume=+b.get('resume'); } }
+    else save(true);
+  }
+  document.getElementById('summary').addEventListener('input',touch);
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden') flush(); });
+  window.addEventListener('pagehide',flush);
 
   jot.focus();
 })();
